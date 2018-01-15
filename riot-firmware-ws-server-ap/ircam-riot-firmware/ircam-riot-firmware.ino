@@ -232,7 +232,6 @@ unsigned long before;
 unsigned long after;
 unsigned long dt;
 
-
 /////////////////////////////////////////////////////////////////
 // Serial port message / buffers / temporary strings
 char SerialBuffer[MAX_SERIAL];
@@ -274,7 +273,7 @@ void setup() {
   // 2-3 second pressing on the switch during boot
   while(!digitalRead(SWITCH_INPUT))
   {
-    //Serial.println("switch pressed");
+    // Serial.println("switch pressed");
     delay(20);
     TempInt++;
     if(digitalRead(POWER_LED))
@@ -530,7 +529,6 @@ void loop() {
       // ----------------------------------------------------------------
 
       client = server.available();
-      Serial.println(client);
 
       if (client.connected() && !wsHeaderAck) {
         if (webSocketServer.handshake(client)) {

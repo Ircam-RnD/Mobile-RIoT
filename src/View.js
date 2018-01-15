@@ -10,7 +10,8 @@ const tmpl = `
       Sync w/ R-IoT
     </button>
   <% } else if (state === 'main') { %>
-    <canvas id="scene"></canvas>
+    <canvas id="phone-orientation"></canvas>
+    <canvas id="riot-orientation"></canvas>
   <% } %>
 `;
 
@@ -37,11 +38,11 @@ class View {
         $btn.addEventListener('click', this.syncRequest);
         break;
       case 'main':
-        this.$canvas = this.$el.querySelector('#scene');
-        const width = window.innerWidth;
-        const height = window.innerHeight;
-        this.$canvas.width = width;
-        this.$canvas.height = height;
+        // this.$canvas = this.$el.querySelector('#scene');
+        // const width = window.innerWidth;
+        // const height = window.innerHeight;
+        // this.$canvas.width = width;
+        // this.$canvas.height = height;
         break;
     }
   }

@@ -22,3 +22,13 @@ html, body, #app, #app > div {
   margin-top: -100px;
   font-size: 18px;
 }
+
+#phone-orientation {
+  position: absolute;
+  top: 0px;
+}
+
+#riot-orientation {
+  position: absolute;
+  bottom: 0px;
+}

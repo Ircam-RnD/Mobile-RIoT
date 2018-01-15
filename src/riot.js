@@ -16,6 +16,8 @@ const riot = {
       let counter = 0;
 
       const openSocket = () => {
+        counter++;
+
         ws = new WebSocket(ip);
         ws.binaryType = 'blob';
 
@@ -27,7 +29,6 @@ const riot = {
         });
 
         ws.addEventListener('message', e => {
-          // console.log(e.data);
           const buffer = this.buffer;
           const values = e.data.split(' ').map(val => parseFloat(val));
           // match phone sensors' order and units
@@ -42,17 +43,16 @@ const riot = {
             this.callback(buffer);
         });
 
-        ws.addEventListener('error', e => reject(e));
+        ws.addEventListener('error', e => {
+          if (counter >= 10)
+            reject(new Error(`Fail to connect after ${counter} attempt`));
+          else
+            openSocket();
+        });
+
         ws.addEventListener('close', e => console.log('close', e));
 
-        counter++;
-
         console.log(`${counter} connection attempt`);
-
-        if (counter < 10)
-          timeoutId = setTimeout(() => openSocket(), 1000);
-        else
-          reject(new Error(`Fail to connect after ${counter} attempt`));
       }
 
       openSocket();
