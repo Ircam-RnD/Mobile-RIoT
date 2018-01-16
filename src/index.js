@@ -2,10 +2,8 @@ import * as lfo from 'waves-lfo/client';
 import * as lfoMotion from 'lfo-motion';
 import * as audio from 'waves-audio';
 import * as loaders from 'waves-loaders';
-import * as mappings from './mappings';
 import riot from './riot';
 import View from './View';
-// import Renderer from './Renderer';
 import AudioEngine from './AudioEngine';
 
 const isCordova = !!window.cordova;
@@ -13,8 +11,8 @@ const readyEvent = isCordova ? 'deviceready' : 'load';
 const RIOT_URL = isCordova ? 'ws://192.168.1.1' : 'ws://192.168.1.40';
 
 const files = [
-  './assets/lux-aeterna-355Hz-10sec.wav',
-  './assets/sawtooth-497Hz-10sec.wav',
+  // './assets/lux-aeterna-355Hz-10sec.wav',
+  // './assets/sawtooth-497Hz-10sec.wav',
 ];
 
 const audioContext = audio.audioContext;
@@ -65,6 +63,9 @@ const app = {
   main() {
     const now = audioContext.currentTime;
 
+    // RioT mapping
+    // --------------------------------------------------------------
+
     // feedback delay
     const feedback = audioContext.createGain();
     feedback.connect(audioContext.destination);
@@ -77,7 +78,7 @@ const app = {
 
     const preDelay = audioContext.createGain();
     preDelay.connect(feedback);
-    preDelay.gain.setValueAtTime(0, now);
+    preDelay.gain.value = 0;
 
     // lowpass
     const lowPass = audioContext.createBiquadFilter();
@@ -87,37 +88,58 @@ const app = {
     const minFreq = 200;
     const maxFreq = 6000;
     const freqRatio = Math.log2(maxFreq / minFreq);
-    lowPass.frequency.setValueAtTime(minFreq, now);
+    lowPass.frequency.value = minFreq;
 
     const scheduler = audio.getScheduler();
     const engine = new AudioEngine(lowPass);
     scheduler.add(engine);
 
+    // Phone mapping
+    // --------------------------------------------------------------
 
-    //
+    const baseFreq = 300;
+    // bourdon
     const sustained = audioContext.createGain();
     sustained.connect(audioContext.destination);
     sustained.gain.value = 0;
 
-    const sustainedLowPass = audioContext.createBiquadFilter();
-    sustainedLowPass.connect(sustained);
-    sustainedLowPass.frequency.value = 1200;
+
+    const tremolo = audioContext.createGain();
+    tremolo.connect(sustained);
+    tremolo.gain.value = 0.7;
+
+    const depth = audioContext.createGain();
+    depth.connect(tremolo.gain);
+    depth.gain.value = 0.3;
+
+    const mod = audioContext.createOscillator();
+    mod.connect(depth);
+    mod.frequency.value = 1;
+    mod.start(now);
+
+    const sustainLowPass = audioContext.createBiquadFilter();
+    sustainLowPass.frequency.value = 600;
+    sustainLowPass.connect(tremolo);
 
     const osc0 = audioContext.createOscillator();
-    osc0.connect(sustainedLowPass);
-    osc0.frequency.value = 600;
+    osc0.connect(sustainLowPass);
+    osc0.type = 'sawtooth';
+    osc0.frequency.value = baseFreq;
 
     const osc1 = audioContext.createOscillator();
-    osc1.connect(sustainedLowPass);
-    osc1.frequency.value = 600 * 3/2;
+    osc1.connect(sustainLowPass);
+    osc1.type = 'sawtooth';
+    osc1.frequency.value = baseFreq * 3/2;
 
     const osc2 = audioContext.createOscillator();
-    osc2.connect(sustainedLowPass);
-    osc2.frequency.value = 600 * Math.pow(2, 1/7);
+    osc2.connect(sustainLowPass);
+    osc2.type = 'sawtooth';
+    osc2.frequency.value = baseFreq * Math.pow(2, 1/7);
 
     const osc3 = audioContext.createOscillator();
-    osc3.connect(sustainedLowPass);
-    osc3.frequency.value = 600 * Math.pow(2, 1/7) * 3/2;
+    osc3.connect(sustainLowPass);
+    osc3.type = 'sawtooth';
+    osc3.frequency.value = baseFreq * Math.pow(2, 1/7) * 3/2;
 
     osc0.start(now);
     osc1.start(now);
@@ -130,35 +152,53 @@ const app = {
 
     // phone
     {
-      const orientation = new lfoMotion.operator.Orientation();
-      const bridge = new lfo.sink.Bridge({
-        processFrame: frame => {
-          const data = frame.data;
+      let flag = false;
 
-          const zAxis = data[2];
-          const sustainedGain = Math.max(0, Math.min(1, zAxis * -1));
-          sustained.gain.value = Math.pow(sustainedGain, 3) * 0.05;
-        }
+      const orientation = new lfoMotion.operator.Orientation();
+
+      const select = new lfo.operator.Select({
+        indexes: [2],
       });
 
       const bpfDisplay = new lfo.sink.BpfDisplay({
         canvas: '#phone-orientation',
-        min: -1,
-        max: 1,
+        max: 0.5,
+        min: -1.5,
         width: window.innerWidth,
         height: window.innerHeight / 2,
+        radius: 4,
+        line: false,
+        duration: 5,
+        colors: ['white'],
       });
 
-      // // connect graph
+      const bridge = new lfo.sink.Bridge({
+        processFrame: frame => {
+          const zAxis = frame.data[2];
+          const sustainedGain = Math.max(0, Math.min(1, zAxis * -1));
+          sustained.gain.value = Math.pow(sustainedGain, 3) * 0.13;
+
+          const xAxis = frame.data[0];
+          const depthFrequency = Math.max(1, Math.min(10, xAxis * -9 + 1));
+          mod.frequency.value = depthFrequency;
+        }
+      });
+
+      // connect graph
       this.motionInput.connect(orientation);
+
+      orientation.connect(select)
+      select.connect(bpfDisplay);
+
       orientation.connect(bridge);
-      orientation.connect(bpfDisplay);
 
       this.motionInput.start();
     }
 
     // riot
     {
+      let flag = false;
+
       const eventIn = new lfo.source.EventIn({
         frameSize: 6,
         frameRate: 0,
@@ -166,37 +206,43 @@ const app = {
       });
       const orientation = new lfoMotion.operator.Orientation();
 
+      const select = new lfo.operator.Select({
+        indexes: [1],
+      });
+
       const bpfDisplay = new lfo.sink.BpfDisplay({
         canvas: '#riot-orientation',
         min: -1,
         max: 1,
         width: window.innerWidth,
         height: window.innerHeight / 2,
+        radius: 4,
+        line: false,
+        duration: 5,
+        colors: ['#40de56'],
       });
 
       const bridge = new lfo.sink.Bridge({
         processFrame: frame => {
-          // lowPass
-          const now = audioContext.currentTime;
-          const data = frame.data;
-
-          const yAxis = data[1];
+          const yAxis = frame.data[1];
           const ratio = Math.max(0, Math.min(1, yAxis + 1));
           const freq = minFreq * Math.pow(2, freqRatio * ratio);
-          lowPass.frequency.cancelScheduledValues(now);
-          lowPass.frequency.setValueAtTime(lowPass.frequency.value, now);
-          lowPass.frequency.linearRampToValueAtTime(freq, now + 0.02);
+          lowPass.frequency.value = freq;
 
-          const zAxis = data[2];
-          const delayInGain = Math.min(1, Math.max(0, (1 - (zAxis + 1) * 0.5) * 0.6));
-          preDelay.gain.cancelScheduledValues(now);
-          preDelay.gain.setValueAtTime(preDelay.gain.value, now);
-          preDelay.gain.linearRampToValueAtTime(delayInGain, now + 0.02);
+          const zAxis = frame.data[2];
+          const normValue = 1 - (zAxis + 1) * 0.5; // top 0 -> bottom 1
+          const delayInGain = Math.min(1, Math.max(0, Math.sqrt(normValue) * 0.9));
+          preDelay.gain.value = delayInGain;
+          const eventProbability = normValue * 0.45 + 0.45;
+          engine.eventProbability = eventProbability;
         },
       });
 
       eventIn.connect(orientation);
-      orientation.connect(bpfDisplay);
+
+      orientation.connect(select);
+      select.connect(bpfDisplay);
+
       orientation.connect(bridge);
 
       riot.setCallback(data => eventIn.process(null, data));

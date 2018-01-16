@@ -20,7 +20,7 @@ class View {
   constructor($container) {
     this.model = {
       state: 'init',
-    }
+    };
 
     this.$el = document.createElement('div');
     $container.appendChild(this.$el);
