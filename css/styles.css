@@ -12,8 +12,8 @@ html, body, #app, #app > div {
   height: 200px;
   border-radius: 50%;
   color: white;
-  background-color: #40de56;
-  border: 1px solid white;
+  background-color: #26ad39;
+  border: 10px solid white;
   display: block;
   position: absolute;
   top: 50%;

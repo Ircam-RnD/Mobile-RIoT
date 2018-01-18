@@ -67,22 +67,21 @@ const app = {
     // --------------------------------------------------------------
 
     // feedback delay
-    const feedback = audioContext.createGain();
-    feedback.connect(audioContext.destination);
-    feedback.gain.value = 0.92;
+    // const feedback = audioContext.createGain();
+    // feedback.connect(audioContext.destination);
+    // feedback.gain.value = 0.92;
 
-    const delay = audioContext.createDelay();
-    delay.connect(feedback);
-    feedback.connect(delay);
-    delay.delayTime.value = 0.2;
+    // const delay = audioContext.createDelay();
+    // delay.connect(feedback);
+    // feedback.connect(delay);
+    // delay.delayTime.value = 0.02;
 
-    const preDelay = audioContext.createGain();
-    preDelay.connect(feedback);
-    preDelay.gain.value = 0;
+    // const preDelay = audioContext.createGain();
+    // preDelay.connect(feedback);
+    // preDelay.gain.value = 0;
 
     // lowpass
     const lowPass = audioContext.createBiquadFilter();
-    lowPass.connect(preDelay);
     lowPass.connect(audioContext.destination);
 
     const minFreq = 200;
@@ -97,7 +96,7 @@ const app = {
     // Phone mapping
     // --------------------------------------------------------------
 
-    const baseFreq = 300;
+    const baseFreq = 150;
     // bourdon
     const sustained = audioContext.createGain();
     sustained.connect(audioContext.destination);
@@ -128,7 +127,7 @@ const app = {
 
     const osc1 = audioContext.createOscillator();
     osc1.connect(sustainLowPass);
-    osc1.type = 'sawtooth';
+    // osc1.type = 'sawtooth';
     osc1.frequency.value = baseFreq * 3/2;
 
     const osc2 = audioContext.createOscillator();
@@ -138,7 +137,7 @@ const app = {
 
     const osc3 = audioContext.createOscillator();
     osc3.connect(sustainLowPass);
-    osc3.type = 'sawtooth';
+    // osc3.type = 'sawtooth';
     osc3.frequency.value = baseFreq * Math.pow(2, 1/7) * 3/2;
 
     osc0.start(now);
@@ -230,10 +229,18 @@ const app = {
           lowPass.frequency.value = freq;
 
           const zAxis = frame.data[2];
-          const normValue = 1 - (zAxis + 1) * 0.5; // top 0 -> bottom 1
-          const delayInGain = Math.min(1, Math.max(0, Math.sqrt(normValue) * 0.9));
-          preDelay.gain.value = delayInGain;
-          const eventProbability = normValue * 0.45 + 0.45;
+          const zNorm = 1 - ((zAxis + 1) * 0.5); // top 0 -> bottom 1
+
+          // const delayInGain = Math.min(1, Math.max(0, normValue * 0.7));
+          // preDelay.gain.value = 0; // delayInGain;
+
+          let avoidY = Math.sqrt(1 - Math.abs(yAxis));
+          avoidY = avoidY * avoidY * avoidY * avoidY;
+          avoidY = avoidY * avoidY * avoidY * avoidY;
+          // console.log(avoidY);
+          engine.ostinatoGain = zNorm * 0.05 * avoidY;
+
+          const eventProbability = zNorm * 0.3 + 0.3;
           engine.eventProbability = eventProbability;
         },
       });
